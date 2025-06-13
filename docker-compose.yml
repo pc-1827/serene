@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    container_name: wellness-db-container
+    environment:
+      POSTGRES_DB: wellness
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d wellness"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth_service:
+    build: ./auth_service
+    container_name: auth-service
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/wellness
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
