@@ -1,2 +1,2 @@
 # serene
-AI Web App for Postpartum and Everyday Mental Health Support
+AI Web App for Postpartum and Everyday Mental Health Support.
