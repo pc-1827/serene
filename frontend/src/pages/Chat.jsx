@@ -1,34 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/layout/Header';
 import ChatInterface from '../components/features/chat/ChatInterface';
 import { colors, typography } from '../styles/theme';
+import api from '../services/api';
 
-const Chat = () => {
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hello! How can I help you today?", sender: "ai" },
-    { id: 2, text: "I'm feeling a bit anxious today.", sender: "user" },
-    { id: 3, text: "I'm sorry to hear that. Let's talk about what's causing your anxiety.", sender: "ai" }
-  ]);
+const Chat = ({ onLogout }) => {
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Load chat history on component mount
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      try {
+        setIsLoading(true);
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          setError('User ID not found. Please log in again.');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Initialize chat session with previous history
+        await api.post(`/chat/init-session/${userId}`);
+        
+        // Then fetch the history
+        console.log('Fetching chat history for user:', userId);
+        const response = await api.get(`/chat/history/${userId}`);
+        console.log('Chat history response:', response.data);
+        
+        if (response.data && Array.isArray(response.data)) {
+          const formattedMessages = response.data.map(msg => ({
+            id: msg.id,
+            text: msg.message,
+            sender: msg.is_bot ? 'ai' : 'user'
+          }));
+          setMessages(formattedMessages);
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+        setError('Failed to load chat history. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchChatHistory();
+  }, []);
 
-  const handleSendMessage = (text) => {
-    // Add user message
+  const handleSendMessage = async (text) => {
+    // Add user message to UI immediately
     const newUserMessage = {
-      id: messages.length + 1,
+      id: Date.now(),
       text: text,
       sender: "user"
     };
     
     setMessages(prev => [...prev, newUserMessage]);
+    setIsLoading(true);
+    setError(null);
     
-    // Simulate AI response (this would be replaced with actual API call)
-    setTimeout(() => {
-      const aiResponse = {
-        id: messages.length + 2,
-        text: "I understand how you feel. Would you like to try a quick breathing exercise?",
+    try {
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        setError('User ID not found. Please log in again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('Sending message to API:', text);
+      // Send message to API
+      const response = await api.post('/chat/message', {
+        user_id: parseInt(userId),
+        message: text,
+        language: 'en'
+      });
+      
+      console.log('API response:', response.data);
+      
+      // Add bot response to UI
+      const botResponse = {
+        id: response.data.message_id,
+        text: response.data.bot_message,
         sender: "ai"
       };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+      
+      setMessages(prev => [...prev, botResponse]);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setError('Failed to send message. Please try again.');
+      
+      // Add error message to chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: "I'm sorry, I'm having trouble responding right now. Please try again.",
+        sender: "ai"
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,13 +110,30 @@ const Chat = () => {
       minHeight: '100vh', 
       padding: '16px'
     }}>
-      <Header />
+      <Header onLogout={onLogout} />
       
       <div style={{ 
         maxWidth: '1000px',
         margin: '0 auto'
       }}>
-        <ChatInterface messages={messages} onSendMessage={handleSendMessage} />
+        {error && (
+          <div style={{
+            backgroundColor: '#fff0f0',
+            border: '1px solid #ffcccc',
+            color: '#e60000',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}>
+            {error}
+          </div>
+        )}
+        
+        <ChatInterface 
+          messages={messages} 
+          onSendMessage={handleSendMessage} 
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import os
 import time
-import psycopg2
 import re
 from datetime import datetime
 from googlesearch import search
@@ -13,18 +12,9 @@ except ImportError:
     print("⚠️ google.generativeai module not found. LLM functionality will be disabled.")
     HAS_GENAI = False
 
-API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyAB1H-HLUKL-5OAFfl_Y8OwHRdRAaZUrFs")
+API_KEY = os.getenv("GOOGLE_API_KEY", "")
 if HAS_GENAI:
     genai.configure(api_key=API_KEY)
-
-# Database configuration - YOUR SPECIFIC CREDENTIALS
-DB_CONFIG = {
-    'host': 'localhost',
-    'port': '5432',
-    'user': 'postgres',
-    'password': '12345',
-    'database': 'wellness'
-}
 
 DR_SARAH_PROMPT = """
 You are Dr. Sarah, a compassionate and experienced licensed therapist specializing in Cognitive Behavioral Therapy (CBT). Your primary goal is to provide a safe, empathetic, and supportive space for users to explore their feelings related to anxiety, depression, and stress.
@@ -124,69 +114,6 @@ def get_web_results(query, num_results=3):
         print(f"❌ Web search failed: {e}")
         return []
 
-class DatabaseManager:
-    def __init__(self):
-        self.connection = None
-        self.connect()
-
-    def connect(self):
-        try:
-            self.connection = psycopg2.connect(**DB_CONFIG)
-            print("✅ Connected to PostgreSQL database 'wellness' on localhost:5432")
-        except Exception as e:
-            print(f"❌ Error connecting to database: {e}")
-            self.connection = None
-
-    def insert_chat_message(self, user_id, message_text, is_bot=False, language='en'):
-        if not self.connection:
-            return None
-        try:
-            cursor = self.connection.cursor()
-            insert_query = """
-                INSERT INTO chat_messages (user_id, is_bot, message_text, language, created_at)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id;
-            """
-            cursor.execute(insert_query, (
-                int(user_id), bool(is_bot), str(message_text), str(language), datetime.now()
-            ))
-            message_id = cursor.fetchone()[0]
-            self.connection.commit()
-            cursor.close()
-            print(f"💾 Message stored: ID={message_id}, is_bot={is_bot}")
-            return message_id
-        except Exception as e:
-            print(f"❌ Error inserting chat message: {e}")
-            self.connection.rollback()
-            return None
-
-    def insert_sentiment_scores(self, user_id, chat_message_id, sentiment_data):
-        if not self.connection:
-            return False
-        try:
-            cursor = self.connection.cursor()
-            insert_query = """
-                INSERT INTO sentiment_scores (user_id, chat_message_id, score, label, recorded_at)
-                VALUES (%s, %s, %s, %s, %s);
-            """
-            for emotion_label, emotion_score in sentiment_data.items():
-                cursor.execute(insert_query, (
-                    int(user_id), int(chat_message_id), float(emotion_score), str(emotion_label), datetime.now()
-                ))
-            self.connection.commit()
-            cursor.close()
-            print(f"📊 Sentiment scores stored: {len(sentiment_data)} emotions for message {chat_message_id}")
-            return True
-        except Exception as e:
-            print(f"❌ Error inserting sentiment scores: {e}")
-            self.connection.rollback()
-            return False
-
-    def close(self):
-        if self.connection:
-            self.connection.close()
-            print("🔌 Database connection closed")
-
 def parse_sentiment_response(sentiment_text):
     sentiment_data = {}
     lines = sentiment_text.strip().split('\n')
@@ -220,12 +147,9 @@ def run_therapist_chatbot():
     print("You are now speaking with Dr. Sarah, your AI therapeutic assistant.")
     print("Type 'exit' anytime to end the session.\n")
 
-    db = DatabaseManager()
-    if not db.connection:
-        print("❌ Cannot proceed without database connection")
-        return
-
+    # Database code removed for testing purposes
     user_id = 1  # Demo only
+
     chat_session = None
     if HAS_GENAI:
         chat_session = therapy_model.start_chat(history=[])
@@ -240,17 +164,16 @@ def run_therapist_chatbot():
         if not user_input:
             continue
 
-        print("💾 Storing user message...")
-        user_message_id = db.insert_chat_message(user_id, user_input, is_bot=False, language='en')
+        # Display sentiment analysis (without storing it)
+        print("💭 Analyzing your message sentiment...")
+        sentiment_data = analyze_message_sentiment(user_input)
+        if sentiment_data:
+            top_emotions = sorted(sentiment_data.items(), key=lambda x: x[1], reverse=True)
+            print("🎭 Top emotions:", ', '.join([f"{k}: {v}" for k, v in top_emotions]))
+        else:
+            print("🎭 No sentiment data available.")
 
-        if user_message_id:
-            sentiment_data = analyze_message_sentiment(user_input)
-            if sentiment_data:
-                db.insert_sentiment_scores(user_id, user_message_id, sentiment_data)
-                top_emotions = sorted(sentiment_data.items(), key=lambda x: x[1], reverse=True)[:3]
-                print("🎭 Top emotions:", ', '.join([f"{k}:{v}" for k,v in top_emotions]))
-
-        # Optional web search
+        # Optional web search based on trigger words
         if any(word in user_input.lower() for word in ["tips", "search", "find", "recommend", "resources"]):
             links = get_web_results(user_input)
             if links:
@@ -266,15 +189,10 @@ def run_therapist_chatbot():
                 response = chat_session.send_message(user_input)
                 time.sleep(1)
                 print("Dr. Sarah:", response.text, "\n")
-
-                db.insert_chat_message(user_id, response.text, is_bot=True, language='en')
-
             except Exception as e:
                 print(f"\n❌ Bot error: {e}\n")
         else:
             print("🤖 Gemini AI not available. Please install 'google.generativeai' to enable chatbot features.")
-
-    db.close()
 
 if __name__ == "__main__":
     run_therapist_chatbot()

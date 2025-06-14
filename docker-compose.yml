@@ -35,17 +35,33 @@ services:
       db:
         condition: service_healthy
 
+  chatbot_service:
+    build: ./chatbot_service
+    container_name: chatbot-service
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/wellness
+      - GOOGLE_API_KEY=
+      - GOOGLE_SEARCH_API_KEY=
+      - GOOGLE_SEARCH_ENGINE_ID=
+    volumes:
+      - ./chatbot_service/.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
   api_gateway:
     build: ./api_gateway
     container_name: api-gateway
     environment:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
+      - CHATBOT_SERVICE_URL=http://chatbot-service:8001
     ports:
       - "8080:8080"
     depends_on:
       - auth_service
       - sentiment_service
+      - chatbot_service
 
   frontend:
     build: ./frontend

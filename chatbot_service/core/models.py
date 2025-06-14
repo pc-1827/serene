@@ -30,3 +30,13 @@ class SentimentScore(Base):
     score = Column(Float)
     label = Column(String)
     recorded_at = Column(DateTime, default=func.now())
+
+# Add a new model for storing chat sessions
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    session_data = Column(Text)  # JSON string of chat history
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
