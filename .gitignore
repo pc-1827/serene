@@ -121,6 +121,7 @@ ipython_config.py
 __pypackages__/
 
 # Celery stuff
+prisma-client
 celerybeat-schedule
 celerybeat.pid
 

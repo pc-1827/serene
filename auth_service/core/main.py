@@ -43,7 +43,7 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user_obj)
     db.commit()
     db.refresh(user_obj)
-    return {"message": "User registered successfully"}
+    return {"message": "User registered successfully", "user_id": user_obj.id}
 
 @app.post("/auth/login")
 def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
@@ -61,7 +61,12 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     db_token = RefreshToken(user_id=user_obj.id, token=refresh_token, expires_at=expires_at)
     db.add(db_token)
     db.commit()
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token,
+        "user_id": user_obj.id
+    }
 
 @app.post("/auth/refresh")
 def refresh_token(payload: RefreshRequest, db: Session = Depends(get_db)):

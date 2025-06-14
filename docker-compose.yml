@@ -26,15 +26,26 @@ services:
       db:
         condition: service_healthy
 
+  sentiment_service:
+    build: ./sentiment_service
+    container_name: sentiment-service
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/wellness
+    depends_on:
+      db:
+        condition: service_healthy
+
   api_gateway:
     build: ./api_gateway
     container_name: api-gateway
     environment:
       - AUTH_SERVICE_URL=http://auth-service:8000
+      - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
     ports:
       - "8080:8080"
     depends_on:
       - auth_service
+      - sentiment_service
 
   frontend:
     build: ./frontend
