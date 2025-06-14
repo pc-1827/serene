@@ -39,7 +39,7 @@ const App = () => {
           path="/" 
           element={
             isAuthenticated ? 
-              <Navigate to="/dashboard" replace /> : 
+              <Navigate to="/chat" replace /> : 
               <Auth onLogin={handleLogin} error={error} />
           } 
         />
