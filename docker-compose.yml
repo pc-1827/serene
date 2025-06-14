@@ -22,8 +22,26 @@ services:
     container_name: auth-service
     environment:
       - DATABASE_URL=postgresql://user:pass@db:5432/wellness
-    ports:
-      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+
+  api_gateway:
+    build: ./api_gateway
+    container_name: api-gateway
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth_service
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api_gateway
