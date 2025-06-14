@@ -1,7 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState } from 'react';
 import Header from '../components/layout/Header';
-import MoodTracker from '../components/features/mood/MoodTracker';
 import WellnessReport from '../components/features/reports/WellnessReport';
 import { colors, typography } from '../styles/theme';
 
@@ -35,12 +34,11 @@ const Dashboard = ({ onLogout }) => {
       {/* Main Content Grid */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
+        gridTemplateColumns: '1fr', 
         gap: '24px',
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        <MoodTracker moodData={moodData} onAddMood={handleAddMood} />
         <WellnessReport onExport={handleExportReport} moodData={moodData} />
       </div>
     </div>

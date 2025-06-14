@@ -7,6 +7,7 @@ export const login = async (email, password) => {
     if (response.data.access_token) {
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
+      localStorage.setItem('user_id', response.data.user_id);
       return true;
     }
     return false;
@@ -19,6 +20,9 @@ export const login = async (email, password) => {
 export const register = async (userData) => {
   try {
     const response = await api.post('/auth/register', userData);
+    if (response.data.user_id) {
+      localStorage.setItem('user_id', response.data.user_id);
+    }
     return response.data;
   } catch (error) {
     console.error('Registration error:', error);
@@ -61,6 +65,7 @@ export const logout = async () => {
     
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_id');
     return true;
   } catch (error) {
     console.error('Logout error details:', error.response || error.message || error);
