@@ -1,18 +1,29 @@
 // src/components/features/mood/MoodTracker.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../../common/Button';
 import { colors, typography } from '../../../styles/theme';
 
 const MoodTracker = ({ moodData, onAddMood }) => {
   const [currentMood, setCurrentMood] = useState(5);
+  const [hasLoggedToday, setHasLoggedToday] = useState(false);
 
   const moodEmojis = ['😢', '😔', '😐', '🙂', '😊'];
   const moodLabels = ['Very Low', 'Low', 'Neutral', 'Good', 'Great'];
   const moodColors = [colors.accent, '#ffa07a', '#ffd93d', colors.secondary, colors.primary];
 
+  // Check if the user has already logged a mood today
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const loggedToday = moodData.some(data => data.date === today);
+    setHasLoggedToday(loggedToday);
+  }, [moodData]);
+
   const handleMoodSubmit = () => {
+    if (hasLoggedToday) return;
+    
     const today = new Date().toISOString().split('T')[0];
     onAddMood({ date: today, score: currentMood });
+    setHasLoggedToday(true);
   };
 
   return (
@@ -55,7 +66,7 @@ const MoodTracker = ({ moodData, onAddMood }) => {
           {moodEmojis.map((emoji, index) => (
             <div 
               key={index} 
-              onClick={() => setCurrentMood((index + 1) * 2)}
+              onClick={() => !hasLoggedToday && setCurrentMood((index + 1) * 2)}
               style={{
                 width: '50px',
                 height: '50px',
@@ -63,12 +74,13 @@ const MoodTracker = ({ moodData, onAddMood }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '30px',
-                cursor: 'pointer',
+                cursor: hasLoggedToday ? 'not-allowed' : 'pointer',
                 borderRadius: '50%',
                 backgroundColor: currentMood === (index + 1) * 2 ? moodColors[index] : 'transparent',
                 transform: currentMood === (index + 1) * 2 ? 'scale(1.2)' : 'scale(1)',
                 transition: 'all 0.2s ease',
-                boxShadow: currentMood === (index + 1) * 2 ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'
+                boxShadow: currentMood === (index + 1) * 2 ? '0 4px 15px rgba(0,0,0,0.1)' : 'none',
+                opacity: hasLoggedToday ? 0.6 : 1
               }}
             >
               {emoji}
@@ -99,9 +111,28 @@ const MoodTracker = ({ moodData, onAddMood }) => {
       </div>
       
       <div style={{ textAlign: 'center' }}>
-        <Button onClick={handleMoodSubmit} style={{ minWidth: '150px' }}>
-          Log Today's Mood
+        <Button 
+          onClick={handleMoodSubmit} 
+          style={{ 
+            minWidth: '150px',
+            opacity: hasLoggedToday ? 0.6 : 1,
+            cursor: hasLoggedToday ? 'not-allowed' : 'pointer'
+          }}
+          variant={hasLoggedToday ? "secondary" : "primary"}
+        >
+          {hasLoggedToday ? "Mood Logged for Today" : "Log Today's Mood"}
         </Button>
+        
+        {hasLoggedToday && (
+          <p style={{
+            ...typography.light,
+            fontSize: '12px',
+            color: colors.textSecondary,
+            marginTop: '8px'
+          }}>
+            You've already logged your mood today.
+          </p>
+        )}
       </div>
       
       <div style={{ marginTop: '30px' }}>

@@ -28,6 +28,10 @@ const App = () => {
     }
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+  };
+
   return (
     <BrowserRouter>
       <Routes>
@@ -43,7 +47,7 @@ const App = () => {
           path="/dashboard" 
           element={
             isAuthenticated ? 
-              <Dashboard /> : 
+              <Dashboard onLogout={handleLogout} /> : 
               <Navigate to="/" replace />
           } 
         />
@@ -51,7 +55,7 @@ const App = () => {
           path="/chat" 
           element={
             isAuthenticated ? 
-              <Chat /> : 
+              <Chat onLogout={handleLogout} /> : 
               <Navigate to="/" replace />
           } 
         />
@@ -59,7 +63,7 @@ const App = () => {
           path="/resources" 
           element={
             isAuthenticated ? 
-              <Resources /> : 
+              <Resources onLogout={handleLogout} /> : 
               <Navigate to="/" replace />
           } 
         />

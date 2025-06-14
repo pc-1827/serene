@@ -5,7 +5,7 @@ import MoodTracker from '../components/features/mood/MoodTracker';
 import WellnessReport from '../components/features/reports/WellnessReport';
 import { colors, typography } from '../styles/theme';
 
-const Dashboard = () => {
+const Dashboard = ({ onLogout }) => {
   const [moodData, setMoodData] = useState([
     { date: '2025-06-08', score: 6 },
     { date: '2025-06-09', score: 7 },
@@ -30,7 +30,7 @@ const Dashboard = () => {
       minHeight: '100vh', 
       padding: '16px'
     }}>
-      <Header />
+      <Header onLogout={onLogout} />
       
       {/* Main Content Grid */}
       <div style={{ 

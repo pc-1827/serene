@@ -3,16 +3,29 @@ import React from 'react';
 import { colors, typography } from '../../styles/theme';
 import Navbar from './Navbar';
 import { useNavigate } from 'react-router-dom';
+import { logout } from '../../services/authService';
 
-const Header = () => {
+const Header = ({ onLogout }) => {
   const navigate = useNavigate();
   
-  const handleLogout = () => {
-    // Clear local storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh_token');
-    // Redirect to login
-    navigate('/');
+  const handleLogout = async () => {
+    console.log('Logout button clicked');
+    try {
+      // Call the logout API endpoint
+      const success = await logout();
+      console.log('Logout success:', success);
+      
+      // Call the onLogout prop to update App state
+      onLogout();
+      
+      // Navigate to login page
+      navigate('/');
+    } catch (err) {
+      console.error('Unexpected error during logout:', err);
+      // Still call onLogout and navigate on error
+      onLogout();
+      navigate('/');
+    }
   };
   
   return (
