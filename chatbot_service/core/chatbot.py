@@ -3,11 +3,18 @@ import re
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(verbose=True)
-API_KEY = os.getenv("GOOGLE_API_KEY", "")
-SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY", "")
-SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID", "")
+# Try to load from .env but don't fail if it doesn't exist
+try:
+    load_dotenv(verbose=True)
+except:
+    pass
+
+# Get API keys from environment variables - these will take precedence 
+# over any values loaded from .env
+API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+SEARCH_API_KEY = os.environ.get("GOOGLE_SEARCH_API_KEY", "")
+SEARCH_ENGINE_ID = os.environ.get("GOOGLE_SEARCH_ENGINE_ID", "")
+
 print(f"API KEY found: {'Yes' if API_KEY else 'No'}")
 print(f"SEARCH API KEY found: {'Yes' if SEARCH_API_KEY else 'No'}")
 print(f"SEARCH ENGINE ID found: {'Yes' if SEARCH_ENGINE_ID else 'No'}")

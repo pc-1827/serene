@@ -11,14 +11,11 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Explicitly copy the .env file
-COPY .env .env
-
 # Copy the rest of the code
 COPY . .
 
-# Print environment for debugging
-RUN cat .env && echo "ENV FILE CONTENTS ABOVE"
+# Remove .env file to avoid conflicts with environment variables
+RUN rm -f .env || true
 
 # Expose FastAPI port
 EXPOSE 8001

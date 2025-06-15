@@ -8,6 +8,7 @@ import json
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 SENTIMENT_SERVICE_URL = os.getenv("SENTIMENT_SERVICE_URL", "http://sentiment-service:8002")
 CHATBOT_SERVICE_URL = os.getenv("CHATBOT_SERVICE_URL", "http://chatbot-service:8001")
+VOICE_SERVICE_URL = os.getenv("VOICE_SERVICE_URL", "http://voice_service:8003")
 
 app = FastAPI()
 
@@ -120,6 +121,43 @@ async def proxy_chat(request: Request, path: str):
             )
         except Exception as e:
             print(f"Error proxying request: {e}")
+            return Response(
+                content=json.dumps({"error": str(e)}),
+                status_code=500,
+                media_type="application/json"
+            )
+
+@app.api_route("/voice/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_voice(request: Request, path: str):
+    # Build the proxied URL
+    url = f"{VOICE_SERVICE_URL}/voice/{path}"
+    # Prepare request data
+    method = request.method
+    headers = dict(request.headers)
+    body = await request.body()
+
+    print(f"Proxying voice request to {url} with method {method}")
+    
+    # Use a longer timeout for voice processing
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            resp = await client.request(
+                method,
+                url,
+                headers={k: v for k, v in headers.items() if k.lower() != "host"},
+                content=body,
+                params=dict(request.query_params),
+            )
+            
+            print(f"Voice service response status: {resp.status_code}")
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=dict(resp.headers),
+                media_type=resp.headers.get("content-type")
+            )
+        except Exception as e:
+            print(f"Error proxying voice request: {e}")
             return Response(
                 content=json.dumps({"error": str(e)}),
                 status_code=500,
