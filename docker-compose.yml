@@ -49,6 +49,18 @@ services:
       db:
         condition: service_healthy
 
+  voice_service:
+    build:
+      context: ./voice_service
+    ports:
+      - "8003:8003"
+    environment:
+      - CHATBOT_SERVICE_URL=http://chatbot-service:8001
+    volumes:
+      - ./voice_service:/app
+    depends_on:
+      - chatbot_service
+
   api_gateway:
     build: ./api_gateway
     container_name: api-gateway
@@ -56,6 +68,7 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
       - CHATBOT_SERVICE_URL=http://chatbot-service:8001
+      - VOICE_SERVICE_URL=http://voice_service:8003
     ports:
       - "8080:8080"
     depends_on:
