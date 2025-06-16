@@ -8,14 +8,31 @@ const Chat = ({ onLogout }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [historyFetched, setHistoryFetched] = useState(false);
   
-  // Load chat history only once
+  // Load chat history on component mount - only once after login
   useEffect(() => {
+    const loadMessages = () => {
+      // First check if we have messages in localStorage
+      const storedMessages = localStorage.getItem('chatMessages');
+      
+      if (storedMessages) {
+        console.log('Loading chat messages from localStorage');
+        setMessages(JSON.parse(storedMessages));
+        return true; // We loaded messages successfully
+      }
+      
+      return false; // No stored messages
+    };
+    
     const fetchChatHistory = async () => {
-      // Skip if already fetched
-      if (historyFetched) return;
-
+      // If we loaded messages from localStorage, skip the fetch
+      if (loadMessages()) {
+        return;
+      }
+      
+      // Check if we've already initialized the session
+      const sessionInitialized = localStorage.getItem('chatSessionInitialized') === 'true';
+      
       try {
         setIsLoading(true);
         const userId = localStorage.getItem('user_id');
@@ -25,13 +42,16 @@ const Chat = ({ onLogout }) => {
           return;
         }
         
-        // Initialize chat session with previous history
-        await api.post(`/chat/init-session/${userId}`);
+        // Only initialize session if not already done
+        if (!sessionInitialized) {
+          console.log('Initializing chat session...');
+          await api.post(`/chat/init-session/${userId}`);
+          localStorage.setItem('chatSessionInitialized', 'true');
+        }
         
-        // Then fetch the history
+        // Fetch the history
         console.log('Fetching chat history for user:', userId);
         const response = await api.get(`/chat/history/${userId}`);
-        console.log('Chat history response:', response.data);
         
         if (response.data && Array.isArray(response.data)) {
           const formattedMessages = response.data.map(msg => ({
@@ -39,9 +59,12 @@ const Chat = ({ onLogout }) => {
             text: msg.message,
             sender: msg.is_bot ? 'ai' : 'user'
           }));
+          
+          // Update state
           setMessages(formattedMessages);
-          // Mark as fetched
-          setHistoryFetched(true);
+          
+          // Store in localStorage
+          localStorage.setItem('chatMessages', JSON.stringify(formattedMessages));
         }
       } catch (err) {
         console.error('Failed to load chat history:', err);
@@ -52,7 +75,13 @@ const Chat = ({ onLogout }) => {
     };
     
     fetchChatHistory();
-  }, [historyFetched]); // Only depends on historyFetched
+  }, []);
+
+  // Function to update message storage
+  const updateMessageStorage = (newMessages) => {
+    setMessages(newMessages);
+    localStorage.setItem('chatMessages', JSON.stringify(newMessages));
+  };
 
   const handleSendMessage = async (text) => {
     // Add user message to UI immediately
@@ -62,7 +91,10 @@ const Chat = ({ onLogout }) => {
       sender: "user"
     };
     
-    setMessages(prev => [...prev, newUserMessage]);
+    // Update messages in state and localStorage
+    const updatedMessages = [...messages, newUserMessage];
+    updateMessageStorage(updatedMessages);
+    
     setIsLoading(true);
     setError(null);
     
@@ -74,15 +106,12 @@ const Chat = ({ onLogout }) => {
         return;
       }
       
-      console.log('Sending message to API:', text);
       // Send message to API
       const response = await api.post('/chat/message', {
         user_id: parseInt(userId),
         message: text,
         language: 'en'
       });
-      
-      console.log('API response:', response.data);
       
       // Add bot response to UI
       const botResponse = {
@@ -91,7 +120,10 @@ const Chat = ({ onLogout }) => {
         sender: "ai"
       };
       
-      setMessages(prev => [...prev, botResponse]);
+      // Update messages in state and localStorage
+      const messagesWithBotResponse = [...updatedMessages, botResponse];
+      updateMessageStorage(messagesWithBotResponse);
+      
     } catch (err) {
       console.error('Failed to send message:', err);
       setError('Failed to send message. Please try again.');
@@ -103,21 +135,27 @@ const Chat = ({ onLogout }) => {
         sender: "ai"
       };
       
-      setMessages(prev => [...prev, errorMessage]);
+      updateMessageStorage([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
   
   const handleSendAudio = async (audioBlob) => {
+    // Create a temporary ID for the user message
+    const tempUserMsgId = Date.now();
+    
     // Add user message to UI immediately (placeholder until transcription)
     const newUserMessage = {
-      id: Date.now(),
+      id: tempUserMsgId,
       text: "🎤 Processing voice message...",
       sender: "user"
     };
     
-    setMessages(prev => [...prev, newUserMessage]);
+    // Update messages in state and localStorage
+    const updatedMessages = [...messages, newUserMessage];
+    updateMessageStorage(updatedMessages);
+    
     setIsLoading(true);
     setError(null);
     
@@ -144,48 +182,64 @@ const Chat = ({ onLogout }) => {
       
       console.log('Voice API response:', response.data);
       
-      // FIXED: Update only once with both the transcribed text and bot response
-      setMessages(prev => {
-        return prev.map(msg => {
-          // Update the placeholder message with the transcribed text
-          if (msg.id === newUserMessage.id) {
-            return {
-              ...msg,
-              text: response.data.transcribed_text || "Voice message"
-            };
-          }
-          return msg;
-        }).concat({
-          // Add the bot response
-          id: response.data.message_id,
-          text: response.data.bot_message,
-          sender: "ai"
-        });
+      // Important: Create a completely new array for React to detect changes
+      const newMessages = [];
+      
+      // Copy all messages except the placeholder
+      messages.forEach(msg => {
+        if (msg.id !== tempUserMsgId) {
+          newMessages.push(msg);
+        }
       });
+      
+      // Add the transcribed text message
+      newMessages.push({
+        id: tempUserMsgId,
+        text: response.data.transcribed_text || "Voice message",
+        sender: "user"
+      });
+      
+      // Add the bot response
+      newMessages.push({
+        id: response.data.message_id || Date.now() + 1,
+        text: response.data.bot_message,
+        sender: "ai"
+      });
+      
+      // Update state and localStorage
+      updateMessageStorage(newMessages);
       
     } catch (err) {
       console.error('Failed to process voice message:', err);
       setError('Failed to process voice message. Please try again.');
       
-      // Update the placeholder message
-      setMessages(prev => 
-        prev.map(msg => msg.id === newUserMessage.id ? 
-          {...msg, text: "Voice message couldn't be processed"} : 
-          msg
-        )
+      // Simple error handling with new array approach
+      const newMessages = messages.map(msg => 
+        msg.id === tempUserMsgId 
+          ? { ...msg, text: "Voice message couldn't be processed" } 
+          : msg
       );
       
-      // Add error message to chat
-      const errorMessage = {
+      newMessages.push({
         id: Date.now() + 1,
         text: "I'm sorry, I couldn't process your voice message. Please try again or type your message.",
         sender: "ai"
-      };
+      });
       
-      setMessages(prev => [...prev, errorMessage]);
+      updateMessageStorage(newMessages);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Add cleanup function for logout
+  const handleLogout = () => {
+    // Clear chat-related items from localStorage on logout
+    localStorage.removeItem('chatMessages');
+    localStorage.removeItem('chatSessionInitialized');
+    
+    // Call the original onLogout function
+    onLogout();
   };
 
   return (
@@ -195,7 +249,7 @@ const Chat = ({ onLogout }) => {
       minHeight: '100vh', 
       padding: '16px'
     }}>
-      <Header onLogout={onLogout} />
+      <Header onLogout={handleLogout} />
       
       <div style={{ 
         maxWidth: '1000px',

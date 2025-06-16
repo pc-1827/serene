@@ -43,11 +43,14 @@ services:
       - GOOGLE_API_KEY=
       - GOOGLE_SEARCH_API_KEY=
       - GOOGLE_SEARCH_ENGINE_ID=
+      - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
     volumes:
-      - ./chatbot_service/.env:/app/.env
+      - ./chatbot_service:/app
     depends_on:
       db:
         condition: service_healthy
+      sentiment_service:
+        condition: service_started
 
   voice_service:
     build:
@@ -61,20 +64,36 @@ services:
     depends_on:
       - chatbot_service
 
+  video_service:
+    build:
+      context: ./video_service
+    ports:
+      - "8004:8004"
+    environment:
+      - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
+    volumes:
+      - ./video_service:/app
+    depends_on:
+      - sentiment_service
+
   api_gateway:
-    build: ./api_gateway
+    build:
+      context: ./api_gateway
     container_name: api-gateway
     environment:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
       - CHATBOT_SERVICE_URL=http://chatbot-service:8001
       - VOICE_SERVICE_URL=http://voice_service:8003
+      - VIDEO_SERVICE_URL=http://video_service:8004
     ports:
       - "8080:8080"
     depends_on:
       - auth_service
       - sentiment_service
       - chatbot_service
+      - voice_service
+      - video_service
 
   frontend:
     build: ./frontend

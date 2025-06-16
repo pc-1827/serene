@@ -44,3 +44,14 @@ CREATE TABLE IF NOT EXISTS sentiment_scores (
     label VARCHAR(50),
     recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Video sentiment analysis table
+CREATE TABLE IF NOT EXISTS video_sentiments (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    video_id VARCHAR(100) NOT NULL,
+    emotion VARCHAR(50) NOT NULL,
+    count INT NOT NULL,
+    percentage FLOAT NOT NULL,
+    recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
