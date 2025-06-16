@@ -97,8 +97,15 @@ def get_sentiment_report(request: SentimentRequest, db: Session = Depends(get_db
     
     results = query.all()
     
+    # Handle case when no results are found more gracefully
     if not results:
-        raise HTTPException(status_code=404, detail="No sentiment data found for this user in the specified date range")
+        # Return empty report instead of error
+        return SentimentResponse(
+            user_id=request.user_id,
+            daily_sentiments=[],
+            available_labels=available_labels,
+            video_emotions={}
+        )
     
     # Get all available sentiment labels
     labels_query = db.query(SentimentScore.label).distinct().all()
@@ -125,10 +132,10 @@ def get_sentiment_report(request: SentimentRequest, db: Session = Depends(get_db
         # Create a dictionary of label -> score for this day
         labels_dict = {row['label']: row['score'] for _, row in day_data.iterrows()}
         
-        # Fill in missing labels with None
+        # Fill in missing labels with 0.0
         for label in available_labels:
             if label not in labels_dict:
-                labels_dict[label] = None
+                labels_dict[label] = 0.0
         
         daily_sentiments.append(DailySentiment(
             date=date,

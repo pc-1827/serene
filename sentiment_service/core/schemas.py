@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from datetime import datetime, date
 
 class SentimentRequest(BaseModel):
@@ -8,7 +8,8 @@ class SentimentRequest(BaseModel):
 
 class DailySentiment(BaseModel):
     date: date
-    labels: Dict[str, float]
+    # Change this line to allow None values in the dictionary
+    labels: Dict[str, Optional[float]]
 
 class VideoEmotionData(BaseModel):
     user_id: int
