@@ -3,7 +3,7 @@ import Header from '../components/layout/Header';
 import ResourceLibrary from '../components/features/resources/ResourceLibrary';
 import { colors, typography } from '../styles/theme';
 
-const Resources = () => {
+const Resources = ({ onLogout }) => {
   const resources = [
     {
       id: 1,
@@ -46,7 +46,7 @@ const Resources = () => {
       minHeight: '100vh', 
       padding: '16px'
     }}>
-      <Header />
+      <Header onLogout={onLogout} />
       
       <div style={{ 
         maxWidth: '1000px',

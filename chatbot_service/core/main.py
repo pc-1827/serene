@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import List, Dict
 import time
 import json
+import httpx
+import os
 
 from .database import get_db, init_db
 from .models import ChatMessage, SentimentScore, User, ChatSession
@@ -81,9 +83,11 @@ def get_or_create_chat_session(db, user_id):
     return session
 
 # Update your process_message function
+SENTIMENT_SERVICE_URL = os.getenv("SENTIMENT_SERVICE_URL", "http://sentiment-service:8002")
+
 @app.post("/chat/message", response_model=MessageResponse)
 def process_message(request: MessageRequest, db: Session = Depends(get_db)):
-    """Process a user message, store it and sentiment scores, and return a bot response."""
+    """Process a user message, store it, and return a bot response."""
     try:
         print(f"Processing message for user ID: {request.user_id}")
         
@@ -112,20 +116,34 @@ def process_message(request: MessageRequest, db: Session = Depends(get_db)):
         # 2. Get sentiment analysis
         sentiment_data = get_sentiment_analysis(request.message)
         
-        # 3. Store sentiment scores
+        # 3. Send sentiment data to sentiment service
+        try:
+            sentiment_service_data = {
+                "user_id": request.user_id,
+                "chat_message_id": user_message.id,
+                "sentiments": sentiment_data,
+                "language": request.language
+            }
+            
+            sentiment_response = httpx.post(
+                f"{SENTIMENT_SERVICE_URL}/sentiment/chat", 
+                json=sentiment_service_data,
+                timeout=10.0
+            )
+            
+            if sentiment_response.status_code != 200:
+                print(f"Error from sentiment service: {sentiment_response.text}")
+            else:
+                print("Sentiment data sent to sentiment service successfully")
+                
+        except Exception as e:
+            print(f"Error sending sentiment data to sentiment service: {e}")
+            # Continue execution even if sentiment service fails
+        
+        # Convert sentiment data to response format
         sentiment_scores = []
         for label, score in sentiment_data.items():
-            sentiment = SentimentScore(
-                user_id=request.user_id,
-                chat_message_id=user_message.id,
-                score=score,
-                label=label
-            )
-            db.add(sentiment)
             sentiment_scores.append(SentimentData(label=label, score=score))
-        db.commit()
-        
-        print(f"Sentiment scores stored for message ID: {user_message.id}")
         
         # 4. Get or update chat session
         chat_session = get_or_create_chat_session(db, request.user_id)

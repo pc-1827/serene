@@ -36,3 +36,16 @@ class SentimentScore(Base):
     
     chat_message = relationship("ChatMessage", back_populates="sentiment_scores")
     user = relationship("User")
+
+class VideoSentiment(Base):
+    __tablename__ = "video_sentiments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    video_id = Column(String)
+    emotion = Column(String)
+    count = Column(Integer)
+    percentage = Column(Float)
+    recorded_at = Column(DateTime, default=func.now())
+    
+    user = relationship("User")

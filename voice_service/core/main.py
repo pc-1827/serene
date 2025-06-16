@@ -96,6 +96,7 @@ async def process_voice_message(user_id: int, file: UploadFile = File(...)):
             
             # Add the transcribed text to the response
             chatbot_data["transcribed_text"] = transcribed_text
+            print(f"Returning data with transcribed_text: {transcribed_text}")
             
             return chatbot_data
     
