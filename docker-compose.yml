@@ -40,9 +40,9 @@ services:
     container_name: chatbot-service
     environment:
       - DATABASE_URL=postgresql://user:pass@db:5432/wellness
-      - GOOGLE_API_KEY=
-      - GOOGLE_SEARCH_API_KEY=
-      - GOOGLE_SEARCH_ENGINE_ID=
+      - GOOGLE_API_KEY=your_gemini_api_key_here
+      - GOOGLE_SEARCH_API_KEY=your_search_api_key_here
+      - GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
       - SENTIMENT_SERVICE_URL=http://sentiment-service:8002
     volumes:
       - ./chatbot_service:/app
@@ -75,6 +75,15 @@ services:
       - ./video_service:/app
     depends_on:
       - sentiment_service
+
+  rag_system:
+    build:
+      context: ./rag_system
+    container_name: rag-system
+    ports:
+      - "8005:8005"
+    volumes:
+      - ./rag_system:/app
 
   api_gateway:
     build:
